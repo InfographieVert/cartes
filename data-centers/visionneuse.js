@@ -10,7 +10,8 @@
  *
  * Deux types de données thématiques (window.VIS_DATA) :
  *  - aplats (défaut) : {classes: [{cle, libelle, couleur…}], communes: {code: [classe, …]}} (ex. pesticides) ;
- *  - points (type: "points") : {categories: [{cle, libelle, court, couleur, forme, rayon, nb}],
+ *  - points (type: "points") : option taille_legende (diamètre des pictos de légende, px, 14 par défaut) ;
+ *    {categories: [{cle, libelle, court, couleur, forme, rayon, nb}],
  *      points: [[catégorie, territoire, x, y, code INSEE, nom, opérateur, statut, texte, [urls], [drapeaux]]]}
  *    x, y en mètres dans la projection du territoire (Lambert-93 en métropole). Ex. data centers.
  *    Légende cliquable (filtre), infobulle par site (clic = épinglée, liens cliquables), recherche des sites.
@@ -140,9 +141,12 @@
   if (POINTS) DATA.points.forEach((p, i) => { if (p[4]) (PARCOMMUNE[p[4]] = PARCOMMUNE[p[4]] || []).push(i); });
   // rayon écran (px) : grossit avec le zoom, pour rester lisible sans tout couvrir en vue large
   // (les pictos grossissent davantage : leur dessin doit devenir lisible)
-  // réglable par carte : VIS_DATA.zoom_pictos = [pente, plafond] (facteur = min(plafond, 1 + pente × log2(zoom)))
+  // réglable par carte : VIS_DATA.zoom_pictos = [pente, plafond, plancher_ordinateur]
+  // (facteur = min(plafond, max(plancher, 1 + pente × log2(zoom))) ; plancher appliqué seulement sur ordinateur,
+  //  pour que les pictos restent reconnaissables en vue large)
   const ZP = (DATA && DATA.zoom_pictos) || [0.3, 2.2];
-  const rayonPt = k => CATS[k].rayon * (CATS[k].picto ? Math.min(ZP[1], 1 + ZP[0] * Math.log2(z))
+  const plancherPt = () => (W >= SEUIL_MOBILE && ZP[2]) || 1;
+  const rayonPt = k => CATS[k].rayon * (CATS[k].picto ? Math.min(ZP[1], Math.max(plancherPt(), 1 + ZP[0] * Math.log2(z)))
                                                        : Math.min(1.7, 1 + 0.18 * Math.log2(z)));
   // Pictos SVG (option picto: {svg, cx, cy, r} : texte SVG, centre et rayon du disque dans le viewBox) :
   // une image haute définition, puis une copie pré-rendue par taille en pixels (net partout, rapide à dessiner)
@@ -915,7 +919,7 @@
   const leg = $("legende");
   function ligneLegende(k) {
     const C = CATS[k];
-    return '<button type="button" class="leg-ligne" aria-pressed="true" data-k="' + k + '">' + pastille(k) +
+    return '<button type="button" class="leg-ligne" aria-pressed="true" data-k="' + k + '">' + pastille(k, (DATA && DATA.taille_legende) || 14) +
       '<span class="l-long">' + echap(C.libelle) + " <small>" + nb(C.nb) + "</small></span>" +
       '<span class="l-court">' + echap(C.court || C.libelle) + " <small>" + nb(C.nb) + "</small></span></button>";
   }
